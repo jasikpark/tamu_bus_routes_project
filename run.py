@@ -58,6 +58,8 @@ for y in routes:
         trip_stops.sort()
         # add all stops to trip
         for time,stop in trip_stops:
+            print stops[stop]
+            print time.strftime("%H:%M:%S")
             trip.AddStop(stops[stop],stop_time=time.strftime("%H:%M:%S"))
 
 # validate and write to zip file
