@@ -14,10 +14,6 @@ def get(url):
 schedule = tr.Schedule()
 schedule.AddAgency("Texas A&M Transportation Services","transport.tamu.edu/transit.aspx","America/Chicago")
 
-# load the calendar
-x = r.get("http://transport.tamu.edu:80/BusRoutesFeed/api/Announcements/Calendar-Today")
-j = json.loads(x.content)
-data_html = html.fromstring(j['Items'][0]['Summary']['Text'])
 #TODO take data_html and see if there is service today or there's a game. It might be best to just edit manually.
 
 # get today and one year from now
