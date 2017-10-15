@@ -1,14 +1,21 @@
 import transitfeed as tr
 import requests as r
 import json
-from lxml import html
 import datetime
 from dateutil import parser
+import utm
 
 # returns json from url request
 def get(url):
     x = r.get(url)
     return json.loads(x.content)
+
+def from_weird_to_latlng(weird_x,weird_y):
+    print weird_x,weird_y
+    x = float(1.0023*weird_x-330240)/10.0
+    y = float(1.006*weird_y+259177)/10.0
+    print x,y
+    return utm.to_latlon(x,y,14,'R')
 
 # create schedule and set agency
 schedule = tr.Schedule()
@@ -37,12 +44,18 @@ routes = get("http://transport.tamu.edu:80/BusRoutesFeed/api/Routes")
 for y in routes:
     # create route
     route = schedule.AddRoute(y['ShortName'],y['Name'],'Bus',y['ShortName'])
+    print y['Name']
+    print y['ShortName']
     # get stops
     stops_json = get("http://transport.tamu.edu:80/BusRoutesFeed/api/route/" + y['ShortName'] + "/stops")
     # create dict of stops
     stops = {}
     for z in stops_json:
-        stops[z['Name']] = schedule.AddStop(z['Latitude'],z['Longtitude'],z['Name'])
+        name = z['Stop']['Name']
+        (lat,lng) = from_weird_to_latlng(z['Latitude'],z['Longtitude'])
+        stop = schedule.AddStop(lat=lat,lng=lng,name=name)
+        stop.Validate()
+        stops[name] = stop
     # get timetable
     timetable = get("http://transport.tamu.edu:80/BusRoutesFeed/api/Route/" + y['ShortName'] + "/TimeTable")
     # create trips and add all stops
@@ -52,15 +65,16 @@ for y in routes:
         # find stop_time and stop_name, then put in a list to sort so the stops are in ascending time order
         trip_stops = []
         for stop,time in t.items():
-            stop_time = parser.parse(time)
-            stop_name = "".join(s for s in list(stops) if s in stop)
+            try:
+                stop_time = parser.parse(time)
+            except Exception:
+                continue
+            stop_name = stop[36:].strip()
             trip_stops.append((stop_time,stop_name))
         trip_stops.sort()
         # add all stops to trip
         for time,stop in trip_stops:
-            print stops[stop]
-            print time.strftime("%H:%M:%S")
-            trip.AddStop(stops[stop],stop_time=time.strftime("%H:%M:%S"))
+            trip.AddStopTime(stops[stop],stop_time=time.strftime("%H:%M:%S"))
 
 # validate and write to zip file
 schedule.Validate()
